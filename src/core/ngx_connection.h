@@ -15,6 +15,10 @@
 
 typedef struct ngx_listening_s  ngx_listening_t;
 
+
+/**
+ * 该结构体用于描述一个网络连接
+ */
 struct ngx_listening_s {
     ngx_socket_t        fd;
 
@@ -120,16 +124,20 @@ typedef enum {
 
 
 struct ngx_connection_s {
+    /*
+     * 连接未使用时，data用于充当连接池中空闲链表中的next指针。
+     * 连接使用时由模块而定，HTTP中，data指向ngx_http_request_t
+     */
     void               *data;
-    ngx_event_t        *read;
-    ngx_event_t        *write;
+    ngx_event_t        *read;        // 连接对应的读事件
+    ngx_event_t        *write;       // 连接对应的写事件
 
-    ngx_socket_t        fd;
+    ngx_socket_t        fd;          // 套接字句柄
 
-    ngx_recv_pt         recv;
-    ngx_send_pt         send;
-    ngx_recv_chain_pt   recv_chain;
-    ngx_send_chain_pt   send_chain;
+    ngx_recv_pt         recv;        // 直接接受网络字节流
+    ngx_send_pt         send;        // 直接发送网络字节流
+    ngx_recv_chain_pt   recv_chain;  // 网络字节流接收链表
+    ngx_send_chain_pt   send_chain;  // 网络字节流发送链表
 
     ngx_listening_t    *listening;
 
@@ -157,7 +165,10 @@ struct ngx_connection_s {
     socklen_t           local_socklen;
 
     ngx_buf_t          *buffer;
-
+    /*
+     * 用来将当前连接以双向链表元素的形式添加到ngx_cycle_t核心结构体
+	 * 的reuseable_connection_queue双向链表中，表示可以重用的连接
+     */
     ngx_queue_t         queue;
 
     ngx_atomic_uint_t   number;
