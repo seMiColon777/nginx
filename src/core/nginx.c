@@ -179,14 +179,14 @@ ngx_module_t  ngx_core_module = {
 };
 
 
-static ngx_uint_t   ngx_show_help;
-static ngx_uint_t   ngx_show_version;
-static ngx_uint_t   ngx_show_configure;
-static u_char      *ngx_prefix;
+static ngx_uint_t   ngx_show_help;        // 是否显示帮助信息
+static ngx_uint_t   ngx_show_version;     // 是否显示版本号
+static ngx_uint_t   ngx_show_configure;   // 是否显示配置信息
+static u_char      *ngx_prefix;           // Nginx的工作目录
 static u_char      *ngx_error_log;
-static u_char      *ngx_conf_file;
-static u_char      *ngx_conf_params;
-static char        *ngx_signal;
+static u_char      *ngx_conf_file;        // 全局配置文件目录地址
+static u_char      *ngx_conf_params;      // 配置参数
+static char        *ngx_signal;           // 信号
 
 
 static char **ngx_os_environ;
@@ -207,7 +207,7 @@ main(int argc, char *const *argv)
     if (ngx_strerror_init() != NGX_OK) {
         return 1;
     }
-
+    /* 解析外部参数 */
     if (ngx_get_options(argc, argv) != NGX_OK) {
         return 1;
     }
@@ -245,20 +245,20 @@ main(int argc, char *const *argv)
      * init_cycle->log is required for signal handlers and
      * ngx_process_options()
      */
-
+    /* 初始化Nginx的init_cycle */
     ngx_memzero(&init_cycle, sizeof(ngx_cycle_t));
     init_cycle.log = log;
     ngx_cycle = &init_cycle;
-
+    /* 创建内存池 默认大小1024 */
     init_cycle.pool = ngx_create_pool(1024, log);
     if (init_cycle.pool == NULL) {
         return 1;
     }
-
+    /* 保存Nginx命令行中的参数和变量,放到全局变量ngx_argv */
     if (ngx_save_argv(&init_cycle, argc, argv) != NGX_OK) {
         return 1;
     }
-
+    /* 将ngx_get_options中获得这些参数取值赋值到ngx_cycle中 */
     if (ngx_process_options(&init_cycle) != NGX_OK) {
         return 1;
     }
@@ -284,11 +284,15 @@ main(int argc, char *const *argv)
     if (ngx_add_inherited_sockets(&init_cycle) != NGX_OK) {
         return 1;
     }
-
+    /*
+     * 初始化所有模块；并对所有模块进行编号处理；
+     * ngx_modules数却是在自动编译的时候生成的，
+     * 位于objs/ngx_modules.c文件中
+     */
     if (ngx_preinit_modules() != NGX_OK) {
         return 1;
     }
-
+    /* 完成cycle的初始化工作 */
     cycle = ngx_init_cycle(&init_cycle);
     if (cycle == NULL) {
         if (ngx_test_config) {
@@ -358,7 +362,7 @@ main(int argc, char *const *argv)
     }
 
 #endif
-
+    /* 创建PID文件 */
     if (ngx_create_pidfile(&ccf->pid, cycle->log) != NGX_OK) {
         return 1;
     }
@@ -745,7 +749,11 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
     return pid;
 }
 
-
+/**
+ * 解析命令行外部参数
+ *
+ * ./nginx -s stop|start|restart
+ */
 static ngx_int_t
 ngx_get_options(int argc, char *const *argv)
 {
@@ -892,6 +900,10 @@ ngx_get_options(int argc, char *const *argv)
 }
 
 
+/**
+ * 保存Nginx命令行中的参数和变量
+ * 放到全局变量ngx_argv
+ */
 static ngx_int_t
 ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
 {
@@ -934,12 +946,15 @@ ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
 }
 
 
+/**
+ * 将ngx_get_options中获得这些参数取值赋值到ngx_cycle中
+ */
 static ngx_int_t
 ngx_process_options(ngx_cycle_t *cycle)
 {
     u_char  *p;
     size_t   len;
-
+    /* Nginx工作目录 */
     if (ngx_prefix) {
         len = ngx_strlen(ngx_prefix);
         p = ngx_prefix;
@@ -993,7 +1008,7 @@ ngx_process_options(ngx_cycle_t *cycle)
 
 #endif
     }
-
+    /* 配置文件目录 */
     if (ngx_conf_file) {
         cycle->conf_file.len = ngx_strlen(ngx_conf_file);
         cycle->conf_file.data = ngx_conf_file;
@@ -1024,7 +1039,7 @@ ngx_process_options(ngx_cycle_t *cycle)
     } else {
         ngx_str_set(&cycle->error_log, NGX_ERROR_LOG_PATH);
     }
-
+    /* 配置参数 */
     if (ngx_conf_params) {
         cycle->conf_param.len = ngx_strlen(ngx_conf_params);
         cycle->conf_param.data = ngx_conf_params;
