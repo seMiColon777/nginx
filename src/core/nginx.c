@@ -281,6 +281,11 @@ main(int argc, char *const *argv)
 
     ngx_slab_sizes_init();
 
+    /*
+     * 初始化socket端口监听，例如打开80端口监听；
+     * Nginx支持热切换，为了保证切换之后的套接字不丢失，
+     * 所以需要采用这一步添加继承的Socket套接字，套接字会放在NGINX的全局环境变量中
+     */
     if (ngx_add_inherited_sockets(&init_cycle) != NGX_OK) {
         return 1;
     }
@@ -328,7 +333,7 @@ main(int argc, char *const *argv)
 
         return 0;
     }
-
+    /* 处理信号；例如./nginx -s stop,则处理Nginx的停止信号 */
     if (ngx_signal) {
         return ngx_signal_process(cycle, ngx_signal);
     }
@@ -458,14 +463,19 @@ ngx_show_version_info(void)
     }
 }
 
-
+/**
+ * Nginx支持热切换，为了保证切换之后的套接字不丢失，所以需要采用这一步添加继承的Socket套接字，
+ * 套接字会放在NGINX的全局环境变量中，初始化继承的sockets
+ * 函数通过环境变量NGINX完成socket的继承，继承来的socket将会放到init_cycle的listening数组中。
+ * 在NGINX环境变量中，每个socket中间用冒号或分号隔开。完成继承同时设置全局变量ngx_inherited为1。
+ */
 static ngx_int_t
 ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 {
     u_char           *p, *v, *inherited;
     ngx_int_t         s;
     ngx_listening_t  *ls;
-
+    /* 获取宏环境变量NGINX的值  例如：# export NGINX="16000:16500:16600;" */
     inherited = (u_char *) getenv(NGINX_VAR);
 
     if (inherited == NULL) {
@@ -474,7 +484,7 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                   "using inherited sockets from \"%s\"", inherited);
-
+    /* 初始化ngx_cycle.listening数组，并且数组中包含10个元素 */
     if (ngx_array_init(&cycle->listening, cycle->pool, 10,
                        sizeof(ngx_listening_t))
         != NGX_OK)
@@ -501,7 +511,7 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
             }
 
             ngx_memzero(ls, sizeof(ngx_listening_t));
-
+            /* 将fd保存到ngx_listening_t结构数组上 */
             ls->fd = (ngx_socket_t) s;
             ls->inherited = 1;
         }
@@ -512,7 +522,7 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
                       "invalid socket number \"%s\" in " NGINX_VAR
                       " environment variable, ignoring", v);
     }
-
+    /* 已经初始化要继承的socket */
     ngx_inherited = 1;
 
     return ngx_set_inherited_sockets(cycle);
@@ -860,7 +870,7 @@ ngx_get_options(int argc, char *const *argv)
 
                 ngx_log_stderr(0, "option \"-g\" requires parameter");
                 return NGX_ERROR;
-
+            /* ngx_signal 是否有信号  ./nginx -s stop|reload|quit */
             case 's':
                 if (*p) {
                     ngx_signal = (char *) p;

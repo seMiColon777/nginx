@@ -1081,7 +1081,10 @@ ngx_delete_pidfile(ngx_cycle_t *cycle)
     }
 }
 
-
+/**
+ * 处理信号；
+ * 例如./nginx -s stop,则处理Nginx的停止信号
+ */
 ngx_int_t
 ngx_signal_process(ngx_cycle_t *cycle, char *sig)
 {
@@ -1099,7 +1102,7 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
 
     file.name = ccf->pid;
     file.log = cycle->log;
-
+    /* 通过/usr/local/nginx/logs/nginx.pid 获取进程ID号 */
     file.fd = ngx_open_file(file.name.data, NGX_FILE_RDONLY,
                             NGX_FILE_OPEN, NGX_FILE_DEFAULT_ACCESS);
 
@@ -1121,7 +1124,7 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
     }
 
     while (n-- && (buf[n] == CR || buf[n] == LF)) { /* void */ }
-
+    /* 最终得到PID */
     pid = ngx_atoi(buf, ++n);
 
     if (pid == (ngx_pid_t) NGX_ERROR) {
@@ -1130,7 +1133,7 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
                       n, buf, file.name.data);
         return 1;
     }
-
+    /* 调用ngx_os_signal_process方法，处理真正的信号 */
     return ngx_os_signal_process(cycle, sig, pid);
 
 }
