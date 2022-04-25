@@ -155,14 +155,20 @@ static ngx_command_t  ngx_core_commands[] = {
       ngx_null_command
 };
 
-
+/**
+ * 核心模块配置文件
+ * ngx_core_module_create_conf 核心模块创建配置文件
+ * ngx_core_module_init_conf 核心模块初始化配置文件
+ */
 static ngx_core_module_t  ngx_core_module_ctx = {
     ngx_string("core"),
     ngx_core_module_create_conf,
     ngx_core_module_init_conf
 };
 
-
+/**
+ * 核心模块
+ */
 ngx_module_t  ngx_core_module = {
     NGX_MODULE_V1,
     &ngx_core_module_ctx,                  /* module context */

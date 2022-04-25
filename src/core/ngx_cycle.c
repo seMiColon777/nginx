@@ -634,7 +634,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
     pool->log = cycle->log;
-
+    /* 调用每个模块的初始化函数 */
     if (ngx_init_modules(cycle) != NGX_OK) {
         /* fatal */
         exit(1);
